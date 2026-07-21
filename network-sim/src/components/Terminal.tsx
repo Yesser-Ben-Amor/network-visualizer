@@ -72,11 +72,14 @@ export function Terminal({
   onPingPath,
 }: TerminalProps) {
   const [input, setInput] = useState('')
-  const [lines, setLines] = useState<Line[]>([{
-    id: 0,
-    text: 'Fake-CMD bereit. Tippe "help" für verfügbare Befehle.',
-  }])
+  const [lines, setLines] = useState<Line[]>([
+    {
+      id: 0,
+      text: 'Fake-CMD bereit. Tippe "help" für verfügbare Befehle.',
+    },
+  ])
   const [nextId, setNextId] = useState(1)
+  const [shellMode, setShellMode] = useState<'windows' | 'linux'>('windows')
 
   const appendLine = (text: string) => {
     setLines((prev) => [...prev, { id: nextId, text }])
@@ -90,17 +93,59 @@ export function Terminal({
     // Eingabe echoen
     appendLine(`> ${command}`)
 
-    const [cmd, ...args] = command.split(/\s+/)
+    const [cmd, ...rawArgs] = command.split(/\s+/)
+    let args = rawArgs
+    let normalizedCmd = cmd.toLowerCase()
 
-    switch (cmd.toLowerCase()) {
+    // Shell-spezifische Aliase auf die bestehenden Kommandos abbilden
+    if (shellMode === 'linux') {
+      if (normalizedCmd === 'ifconfig') {
+        normalizedCmd = 'ipconfig'
+      } else if (normalizedCmd === 'ip' && args[0]?.toLowerCase() === 'a') {
+        // "ip a" / "ip addr" wie ipconfig behandeln
+        normalizedCmd = 'ipconfig'
+      } else if (normalizedCmd === 'clear') {
+        normalizedCmd = 'cls'
+      } else if (normalizedCmd === 'ip' && args[0]?.toLowerCase() === 'route') {
+        // "ip route" wie "route print" behandeln
+        normalizedCmd = 'route'
+        args = ['print', ...args.slice(1)]
+      }
+    }
+
+    switch (normalizedCmd) {
       case 'help': {
         appendLine('Verfügbare Befehle:')
-        appendLine('  help                         - zeigt diese Hilfe')
-        appendLine('  ipconfig                     - zeigt IP-Konfiguration des ausgewählten Geräts')
-        appendLine('  set ip <ip> <maske> <gateway> - setzt IP-Konfiguration des ausgewählten Geräts')
-        appendLine('  ping <ip>                    - prüft Erreichbarkeit eines anderen Geräts (simuliert)')
-        appendLine('  cls                          - leert die Konsole')
-        appendLine('  route print                  - zeigt Routinginformationen zum ausgewählten Gerät')
+        if (shellMode === 'windows') {
+          appendLine('  help                         - zeigt diese Hilfe')
+          appendLine('  ipconfig                     - zeigt IP-Konfiguration des ausgewählten Geräts')
+          appendLine('  set ip <ip> <maske> <gateway> - setzt IP-Konfiguration des ausgewählten Geräts')
+          appendLine('  ping <ip>                    - prüft Erreichbarkeit eines anderen Geräts (simuliert)')
+          appendLine('  cls                          - leert die Konsole')
+          appendLine('  route print                  - zeigt Routinginformationen zum ausgewählten Gerät')
+          appendLine('  mode linux                   - wechselt in den Linux-Terminal-Modus')
+        } else {
+          appendLine('  help                         - zeigt diese Hilfe')
+          appendLine('  ifconfig / ip a              - zeigt IP-Konfiguration des ausgewählten Geräts')
+          appendLine('  set ip <ip> <maske> <gateway> - setzt IP-Konfiguration des ausgewählten Geräts')
+          appendLine('  ping <ip>                    - prüft Erreichbarkeit eines anderen Geräts (simuliert)')
+          appendLine('  clear                        - leert die Konsole')
+          appendLine('  ip route                     - zeigt Routinginformationen zum ausgewählten Gerät')
+          appendLine('  mode windows                 - wechselt in den Windows-CMD-Modus')
+        }
+        break
+      }
+      case 'mode': {
+        const target = args[0]?.toLowerCase()
+        if (target === 'windows' || target === 'win') {
+          setShellMode('windows')
+          appendLine('Shell-Modus auf Windows CMD gesetzt.')
+        } else if (target === 'linux') {
+          setShellMode('linux')
+          appendLine('Shell-Modus auf Linux Terminal gesetzt.')
+        } else {
+          appendLine('Verwendung: mode windows | mode linux')
+        }
         break
       }
       case 'ipconfig': {
@@ -527,6 +572,24 @@ export function Terminal({
 
   return (
     <div className="terminal">
+      <div className="terminal-header">
+        <div className="terminal-mode-toggle">
+          <button
+            type="button"
+            className={shellMode === 'windows' ? 'terminal-mode-btn active' : 'terminal-mode-btn'}
+            onClick={() => setShellMode('windows')}
+          >
+            Windows CMD
+          </button>
+          <button
+            type="button"
+            className={shellMode === 'linux' ? 'terminal-mode-btn active' : 'terminal-mode-btn'}
+            onClick={() => setShellMode('linux')}
+          >
+            Linux Terminal
+          </button>
+        </div>
+      </div>
       <div className="terminal-output">
         {lines.map((line) => (
           <div key={line.id} className="terminal-line">
@@ -535,7 +598,9 @@ export function Terminal({
         ))}
       </div>
       <form className="terminal-input-row" onSubmit={handleSubmit}>
-        <span className="terminal-prompt">{'C:\\>'}</span>
+        <span className="terminal-prompt">
+          {shellMode === 'windows' ? 'C:> ' : 'user@sim:~$ '}
+        </span>
         <input
           type="text"
           className="terminal-input"

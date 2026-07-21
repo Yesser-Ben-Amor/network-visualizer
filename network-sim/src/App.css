@@ -543,6 +543,33 @@ body {
   font-size: 0.78rem;
 }
 
+.terminal-header {
+  padding: 4px 8px 2px;
+  border-bottom: 1px solid #111827;
+  background: #020617;
+}
+
+.terminal-mode-toggle {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.terminal-mode-btn {
+  border-radius: 999px;
+  border: 1px solid #1f2937;
+  background: #020617;
+  color: #9ca3af;
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+
+.terminal-mode-btn.active {
+  border-color: #22c55e;
+  color: #bbf7d0;
+  background: radial-gradient(circle at top, rgba(34, 197, 94, 0.25), #020617);
+}
+
 .terminal-output {
   flex: 1;
   padding: 8px 12px;
