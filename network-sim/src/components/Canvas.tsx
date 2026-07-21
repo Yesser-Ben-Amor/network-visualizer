@@ -8,7 +8,7 @@ interface CanvasProps {
   wiringMode: boolean
   wiringSourceId: number | null
   contextMenu: { deviceId: number; x: number; y: number } | null
-  canvasRef: React.RefObject<HTMLDivElement>
+  canvasRef: React.RefObject<HTMLDivElement | null>
   onMouseMove: (event: React.MouseEvent<HTMLDivElement>) => void
   onMouseUp: () => void
   onMouseLeave: () => void
