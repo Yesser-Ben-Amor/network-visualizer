@@ -110,6 +110,13 @@ export function Terminal({
         // "ip route" wie "route print" behandeln
         normalizedCmd = 'route'
         args = ['print', ...args.slice(1)]
+      } else if (normalizedCmd === 'traceroute') {
+        // traceroute wie tracert behandeln
+        normalizedCmd = 'tracert'
+      } else if (normalizedCmd === 'ip' && args[0]?.toLowerCase() === 'neigh') {
+        // "ip neigh" wie "arp -a" behandeln
+        normalizedCmd = 'arp'
+        args = ['-a', ...args.slice(1)]
       }
     }
 
@@ -123,6 +130,10 @@ export function Terminal({
           appendLine('  ping <ip>                    - prüft Erreichbarkeit eines anderen Geräts (simuliert)')
           appendLine('  cls                          - leert die Konsole')
           appendLine('  route print                  - zeigt Routinginformationen zum ausgewählten Gerät')
+          appendLine('  tracert <ip>                 - zeigt den Pfad (Hops) zum Ziel (simuliert)')
+          appendLine('  arp -a                       - zeigt bekannte Nachbarn (gleiche Broadcast-Domain)')
+          appendLine('  netstat -rn                  - zeigt Routingtabelle (simuliert)')
+          appendLine('  nslookup <name>              - erklärt DNS-Auflösung (simuliert)')
           appendLine('  mode linux                   - wechselt in den Linux-Terminal-Modus')
         } else {
           appendLine('  help                         - zeigt diese Hilfe')
@@ -131,6 +142,10 @@ export function Terminal({
           appendLine('  ping <ip>                    - prüft Erreichbarkeit eines anderen Geräts (simuliert)')
           appendLine('  clear                        - leert die Konsole')
           appendLine('  ip route                     - zeigt Routinginformationen zum ausgewählten Gerät')
+          appendLine('  traceroute <ip>              - zeigt den Pfad (Hops) zum Ziel (simuliert)')
+          appendLine('  ip neigh                     - zeigt bekannte Nachbarn (gleiche Broadcast-Domain)')
+          appendLine('  netstat -rn                  - zeigt Routingtabelle (simuliert)')
+          appendLine('  nslookup <name>              - erklärt DNS-Auflösung (simuliert)')
           appendLine('  mode windows                 - wechselt in den Windows-CMD-Modus')
         }
         break
@@ -146,6 +161,165 @@ export function Terminal({
         } else {
           appendLine('Verwendung: mode windows | mode linux')
         }
+        break
+      }
+      case 'tracert': {
+        const targetIp = args[0]
+
+        if (!targetIp) {
+          appendLine('Fehlende IP. Verwende: tracert <ip>')
+          break
+        }
+
+        if (!selectedDevice) {
+          appendLine('Kein Quellgerät ausgewählt. Wähle im Canvas ein Gerät aus und versuche es erneut.')
+          break
+        }
+
+        const target = devices.find((d) => d.ipAddress === targetIp)
+        if (!target) {
+          appendLine(`Zielhost ${targetIp} wurde nicht gefunden (kein Gerät mit dieser IP).`)
+          break
+        }
+
+        // Pfad im Verbindungsgraphen wie beim Ping bestimmen
+        const adjacency = new Map<number, number[]>()
+        for (const c of connections) {
+          const fromList = adjacency.get(c.fromId) ?? []
+          fromList.push(c.toId)
+          adjacency.set(c.fromId, fromList)
+
+          const toList = adjacency.get(c.toId) ?? []
+          toList.push(c.fromId)
+          adjacency.set(c.toId, toList)
+        }
+
+        const visited = new Set<number>()
+        const queue: number[] = []
+        const parent = new Map<number, number | null>()
+        visited.add(selectedDevice.id)
+        queue.push(selectedDevice.id)
+        parent.set(selectedDevice.id, null)
+
+        let reachable = false
+        while (queue.length > 0) {
+          const current = queue.shift()!
+          if (current === target.id) {
+            reachable = true
+            break
+          }
+          const neighbors = adjacency.get(current) ?? []
+          for (const n of neighbors) {
+            if (!visited.has(n)) {
+              visited.add(n)
+              queue.push(n)
+              parent.set(n, current)
+            }
+          }
+        }
+
+        if (!reachable) {
+          appendLine('Es konnte kein Pfad zum Ziel in der aktuellen Topologie gefunden werden.')
+          break
+        }
+
+        const hops: Device[] = []
+        let cur: number | null = target.id
+        while (cur !== null) {
+          const dev = devices.find((d) => d.id === cur)
+          if (dev) {
+            hops.unshift(dev)
+          }
+          cur = parent.get(cur) ?? null
+        }
+
+        appendLine(`Tracing Route to ${targetIp} (simuliert):`)
+        hops.forEach((dev, index) => {
+          appendLine(`  ${index + 1}   ${dev.ipAddress ?? '-'}   ${dev.name}`)
+        })
+
+        break
+      }
+      case 'arp': {
+        if (!selectedDevice || !selectedDevice.ipAddress || !selectedDevice.subnetMask) {
+          appendLine('ARP-Tabelle nicht verfügbar. Stelle sicher, dass ein Gerät mit IP/Maske ausgewählt ist.')
+          break
+        }
+
+        const srcNet = getNetworkAddress(selectedDevice.ipAddress, selectedDevice.subnetMask)
+        if (srcNet === null) {
+          appendLine('Ungültige IP-/Maskenkombination, ARP-Tabelle kann nicht berechnet werden.')
+          break
+        }
+
+        // Geräte im gleichen Netz ermitteln
+        const sameNetDevices = devices.filter((d) => {
+          if (!d.ipAddress || !d.subnetMask) return false
+          const net = getNetworkAddress(d.ipAddress, d.subnetMask)
+          return net !== null && net === srcNet
+        })
+
+        if (sameNetDevices.length <= 1) {
+          appendLine('Keine weiteren bekannten Geräte im gleichen Netz gefunden.')
+          break
+        }
+
+        appendLine('ARP-Tabelle (simuliert):')
+        for (const d of sameNetDevices) {
+          if (d.id === selectedDevice.id) continue
+          appendLine(`  ${d.ipAddress ?? '-'}   dynamisch   ${d.name}`)
+        }
+        break
+      }
+      case 'netstat': {
+        // Nur "netstat -rn" simulieren, inhaltlich wie eine kompakte Routingtabelle
+        if (!selectedDevice) {
+          appendLine('Kein Gerät ausgewählt. Wähle zuerst im Canvas ein Gerät aus.')
+          break
+        }
+
+        appendLine('Netstat -rn (simuliert) für: ' + selectedDevice.name)
+
+        if (selectedDevice.type === 'router') {
+          const lanIp = selectedDevice.lanIp ?? selectedDevice.ipAddress
+          const lanMask = selectedDevice.lanSubnetMask ?? selectedDevice.subnetMask
+          const wanIp = selectedDevice.wanIp
+          const wanMask = selectedDevice.wanSubnetMask
+
+          if (lanIp && lanMask) {
+            const lanNet = getNetworkAddress(lanIp, lanMask)
+            if (lanNet !== null) {
+              appendLine(`  ${intToIpv4(lanNet)}  ${lanMask}  U  0  0  0  LAN`)
+            }
+          }
+
+          if (wanIp && wanMask) {
+            const wanNet = getNetworkAddress(wanIp, wanMask)
+            if (wanNet !== null) {
+              appendLine(`  ${intToIpv4(wanNet)}  ${wanMask}  U  0  0  0  WAN`)
+            }
+          }
+
+          const routes = selectedDevice.routes ?? []
+          for (const r of routes) {
+            appendLine(`  ${r.destination}  ${r.subnetMask}  UG 0  0  0  via ${r.nextHop}`)
+          }
+        } else {
+          // Nicht-Router: lokales Netz + Default-Gateway anzeigen
+          if (selectedDevice.ipAddress && selectedDevice.subnetMask) {
+            const net = getNetworkAddress(selectedDevice.ipAddress, selectedDevice.subnetMask)
+            if (net !== null) {
+              appendLine(
+                `  ${intToIpv4(net)}  ${selectedDevice.subnetMask}  U  0  0  0  lokal`,
+              )
+            }
+          }
+
+          if (selectedDevice.gateway) {
+            appendLine(`  0.0.0.0  0.0.0.0  UG 0  0  0  via ${selectedDevice.gateway}`)
+          }
+        }
+
         break
       }
       case 'ipconfig': {
