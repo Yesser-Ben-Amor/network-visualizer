@@ -422,9 +422,7 @@ function App() {
             </div>
           </div>
         </div>
-  pingPath={pingPath}
-          pingProgress={pingProgress}
-        
+
         {mode === 'lern' && activeScenario && showScenarioPanel && (
           <div className="scenario-panel">
             <div className="scenario-panel-header">

@@ -394,7 +394,8 @@ export function Terminal({
           break
         }
 
-        // Unterschiedliche Netze: prüfen, ob ein Router mit passenden LAN/WAN-Netzen existiert
+        // Unterschiedliche Netze: prüfen, ob ein Router mit passenden LAN/WAN-Netzen
+        // oder einer statischen Route existiert
         const routers = devices.filter((d) => d.type === 'router')
         let hasRoutingPath = false
         if (srcNet !== null && targetNet !== null) {
@@ -402,10 +403,17 @@ export function Terminal({
             const lanNet = getNetworkAddress(r.lanIp ?? r.ipAddress, r.lanSubnetMask ?? r.subnetMask)
             const wanNet = getNetworkAddress(r.wanIp, r.wanSubnetMask)
             if (lanNet === null || wanNet === null) continue
-            const covers =
+            const coversDirect =
               (lanNet === srcNet && wanNet === targetNet) ||
               (lanNet === targetNet && wanNet === srcNet)
-            if (covers) {
+
+            const routes = r.routes ?? []
+            const coversStatic = routes.some((route) => {
+              const routeNet = getNetworkAddress(route.destination, route.subnetMask)
+              return routeNet !== null && routeNet === targetNet
+            })
+
+            if (coversDirect || coversStatic) {
               hasRoutingPath = true
               break
             }
