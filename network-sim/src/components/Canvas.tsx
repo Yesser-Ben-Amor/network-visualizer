@@ -95,7 +95,7 @@ export function Canvas({
           )
         })}
 
-        {pingPath && pingPath.length > 1 && pingProgress > 0 && pingProgress < 1 && (
+        {pingPath && pingPath.length > 1 && (
           (() => {
             const segments: { from: Device; to: Device }[] = []
             for (let i = 0; i < pingPath.length - 1; i += 1) {
