@@ -9,6 +9,7 @@ interface TerminalProps {
   devices: Device[]
   connections: Connection[]
   onSetActiveProtocol?: (protocol: 'none' | 'ping' | 'dhcp') => void
+  onPingPath?: (path: number[]) => void
 }
 
 interface Line {
@@ -68,6 +69,7 @@ export function Terminal({
   devices,
   connections,
   onSetActiveProtocol,
+  onPingPath,
 }: TerminalProps) {
   const [input, setInput] = useState('')
   const [lines, setLines] = useState<Line[]>([{
@@ -316,7 +318,6 @@ export function Terminal({
           break
         }
 
-        // Protokoll: Ping aktivieren (App kümmert sich ums automatische Zurücksetzen)
         onSetActiveProtocol?.('ping')
 
         const target = devices.find((d) => d.ipAddress === targetIp)
@@ -344,8 +345,10 @@ export function Terminal({
 
         const visited = new Set<number>()
         const queue: number[] = []
+        const parent = new Map<number, number | null>()
         visited.add(selectedDevice.id)
         queue.push(selectedDevice.id)
+        parent.set(selectedDevice.id, null)
 
         let reachable = false
         while (queue.length > 0) {
@@ -359,7 +362,21 @@ export function Terminal({
             if (!visited.has(n)) {
               visited.add(n)
               queue.push(n)
+              parent.set(n, current)
             }
+          }
+        }
+
+        let path: number[] | null = null
+        if (reachable) {
+          const result: number[] = []
+          let cur: number | null = target.id
+          while (cur !== null) {
+            result.unshift(cur)
+            cur = parent.get(cur) ?? null
+          }
+          if (result.length > 1) {
+            path = result
           }
         }
 
@@ -371,6 +388,9 @@ export function Terminal({
         // Gleiche Netz-ID: direkter Ping möglich
         if (srcNet !== null && targetNet !== null && srcNet === targetNet) {
           appendLine('Antwort von Simulator: Ping erfolgreich. (4 Pakete gesendet, 4 empfangen, 0 verloren)')
+          if (path) {
+            onPingPath?.(path)
+          }
           break
         }
 
@@ -398,6 +418,10 @@ export function Terminal({
         }
 
         appendLine('Antwort von Simulator: Ping erfolgreich. (4 Pakete gesendet, 4 empfangen, 0 verloren)')
+
+        if (path) {
+          onPingPath?.(path)
+        }
 
         break
       }

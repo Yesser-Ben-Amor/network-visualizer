@@ -19,6 +19,8 @@ interface CanvasProps {
   onDuplicateDevice: () => void
   onRemoveDevice: () => void
   onRemoveConnections: () => void
+  pingPath: number[] | null
+  pingProgress: number
 }
 
 export function Canvas({
@@ -38,6 +40,8 @@ export function Canvas({
   onDuplicateDevice,
   onRemoveDevice,
   onRemoveConnections,
+  pingPath,
+  pingProgress,
 }: CanvasProps) {
   const getDeviceById = (id: number) => devices.find((d) => d.id === id)
 
@@ -90,6 +94,47 @@ export function Canvas({
             />
           )
         })}
+
+        {pingPath && pingPath.length > 1 && pingProgress > 0 && pingProgress < 1 && (
+          (() => {
+            const segments: { from: Device; to: Device }[] = []
+            for (let i = 0; i < pingPath.length - 1; i += 1) {
+              const from = getDeviceById(pingPath[i])
+              const to = getDeviceById(pingPath[i + 1])
+              if (!from || !to) continue
+              segments.push({ from, to })
+            }
+
+            if (segments.length === 0) return null
+
+            const segIndex = Math.min(
+              segments.length - 1,
+              Math.floor(pingProgress * segments.length),
+            )
+            const localT = (pingProgress * segments.length) - segIndex
+            const seg = segments[segIndex]
+
+            const startX = seg.from.x + 40
+            const startY = seg.from.y + 20
+            const endX = seg.to.x + 40
+            const endY = seg.to.y + 20
+
+            const cx = startX + (endX - startX) * localT
+            const cy = startY + (endY - startY) * localT
+
+            return (
+              <circle
+                cx={cx}
+                cy={cy}
+                r={5}
+                fill="#22c55e"
+                stroke="#bbf7d0"
+                strokeWidth={2}
+                className="ping-packet"
+              />
+            )
+          })()
+        )}
       </svg>
 
       {devices.map((d) => (

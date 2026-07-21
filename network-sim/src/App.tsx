@@ -54,9 +54,44 @@ function App() {
   const [mode, setMode] = useState<'profi' | 'lern'>('profi')
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>('basic-lan-dhcp')
   const [scenarioMessages, setScenarioMessages] = useState<string[]>([])
+  const [pingPath, setPingPath] = useState<number[] | null>(null)
+  const [pingProgress, setPingProgress] = useState(0)
 
   const scenarios: LessonScenario[] = [basicLanDhcpScenario, twoNetsWithRouterScenario, internetViaDefaultRouteScenario]
   const activeScenario = scenarios.find((s) => s.id === selectedScenarioId) ?? null
+
+  const handlePingPath = (path: number[]) => {
+    if (path.length < 2) return
+
+    // Hin- und Rückweg: z.B. [A,B,C] -> [A,B,C,B,A]
+    const forward = path
+    const backward = path.slice(0, -1).reverse()
+    const roundTrip = [...forward, ...backward]
+
+    setPingPath(roundTrip)
+    setPingProgress(0)
+
+    if (typeof window === 'undefined') return
+
+    const durationMs = 6000
+    const start = performance.now()
+
+    const step = (now: number) => {
+      const t = Math.min((now - start) / durationMs, 1)
+      setPingProgress(t)
+      if (t < 1) {
+        window.requestAnimationFrame(step)
+      } else {
+        // Animation abgeschlossen
+        setTimeout(() => {
+          setPingPath(null)
+          setPingProgress(0)
+        }, 300)
+      }
+    }
+
+    window.requestAnimationFrame(step)
+  }
 
   const handleSetActiveProtocol = (protocol: 'none' | 'ping' | 'dhcp') => {
     setActiveProtocol(protocol)
@@ -387,7 +422,9 @@ function App() {
             </div>
           </div>
         </div>
-
+  pingPath={pingPath}
+          pingProgress={pingProgress}
+        
         {mode === 'lern' && activeScenario && showScenarioPanel && (
           <div className="scenario-panel">
             <div className="scenario-panel-header">
@@ -422,6 +459,8 @@ function App() {
           onDuplicateDevice={handleDuplicateDevice}
           onRemoveDevice={handleRemoveDevice}
           onRemoveConnections={handleRemoveConnections}
+          pingPath={pingPath}
+          pingProgress={pingProgress}
         />
 
         {mode === 'lern' && scenarioMessages.length > 0 && (
@@ -470,6 +509,7 @@ function App() {
             devices={devices}
             connections={connections}
             onSetActiveProtocol={handleSetActiveProtocol}
+            onPingPath={handlePingPath}
           />
         </CmdWindow>
       )}
