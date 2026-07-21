@@ -18,7 +18,6 @@ export function Sidebar({ onAddDevice }: SidebarProps) {
       <button onClick={() => onAddDevice('bonndrucker')}>Bondrucker hinzufügen</button>
       <button onClick={() => onAddDevice('kasse')}>Kasse hinzufügen</button>
       <button onClick={() => onAddDevice('kassenschublade')}>Kassenschublade hinzufügen</button>
-      <button onClick={() => onAddDevice('orderman')}>Orderman hinzufügen</button>
     </aside>
   )
 }
