@@ -9,6 +9,7 @@ import { useDevices } from './hooks/useDevices'
 import { ModeSwitcher } from './components/ModeSwitcher'
 import { MatrixBackground } from './components/MatrixBackground'
 import { OsiStack } from './components/OsiStack'
+import { LoginPage } from './components/LoginPage'
 import type { LessonScenario } from './types/scenario'
 import { basicLanDhcpScenario } from './scenarios/basicLanDhcp'
 import { twoNetsWithRouterScenario } from './scenarios/twoNetsWithRouter'
@@ -62,6 +63,10 @@ function App() {
   const [scenarioMessages, setScenarioMessages] = useState<string[]>([])
   const [pingPath, setPingPath] = useState<number[] | null>(null)
   const [pingProgress, setPingProgress] = useState(0)
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    if (typeof window === 'undefined') return false
+    return window.localStorage.getItem('nn_logged_in') === 'true'
+  })
   const [quizType, setQuizType] = useState<'network' | 'linux' | 'cmd' | null>(null)
   const [quizLevel, setQuizLevel] = useState<'easy' | 'medium' | 'hard' | null>(null)
   const [quizCurrentIndex, setQuizCurrentIndex] = useState(0)
@@ -431,6 +436,17 @@ function App() {
       window.clearInterval(id)
     }
   }, [quizType, quizLevel, quizCurrentIndex, quizFinished])
+
+  if (!isLoggedIn) {
+    return (
+      <LoginPage
+        onLoginSuccess={() => {
+          setIsLoggedIn(true)
+          window.localStorage.setItem('nn_logged_in', 'true')
+        }}
+      />
+    )
+  }
 
   return (
     <div className="app-root">
