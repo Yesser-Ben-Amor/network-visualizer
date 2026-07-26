@@ -1,5 +1,6 @@
 import './LoginPage.css'
-import { FormEvent, useState } from 'react'
+import { useState } from 'react'
+import type { FormEvent } from 'react'
 
 interface LoginPageProps {
   onLoginSuccess: () => void
