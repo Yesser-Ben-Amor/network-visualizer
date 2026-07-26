@@ -47,6 +47,15 @@ function getBroadcastAddress(ip: string | undefined, mask: string | undefined): 
   return (ipInt | invertedMask) >>> 0
 }
 
+function generateMac(id: number): string {
+  // Einfache, aber stabile MAC auf Basis der Geräte-ID
+  // Präfix 02:00:00 (lokal administrierte Adresse), Rest aus der ID abgeleitet
+  const part1 = (id & 0xff).toString(16).padStart(2, '0')
+  const part2 = ((id * 7) & 0xff).toString(16).padStart(2, '0')
+  const part3 = ((id * 13) & 0xff).toString(16).padStart(2, '0')
+  return `02:00:00:${part1}:${part2}:${part3}`
+}
+
 export function useDevices() {
   const hasLoadedFromStorageRef = useRef(false)
   const [devices, setDevices] = useState<Device[]>([])
@@ -88,6 +97,7 @@ export function useDevices() {
                 // Haupt-IP des Geräts als LAN-IP spiegeln, falls nicht gesetzt
                 ipAddress: d.ipAddress ?? lanIp,
                 subnetMask: d.subnetMask ?? '255.255.255.0',
+                mac: d.mac ?? generateMac(d.id),
                 ...d,
               }
             }
@@ -96,10 +106,14 @@ export function useDevices() {
                 ipAddress: d.ipAddress ?? '192.168.0.10',
                 subnetMask: d.subnetMask ?? '255.255.255.0',
                 gateway: d.gateway ?? '192.168.0.1',
+                mac: d.mac ?? generateMac(d.id),
                 ...d,
               }
             }
-            return d
+            return {
+              mac: d.mac ?? generateMac(d.id),
+              ...d,
+            }
           })
 
           setDevices(migratedDevices)
@@ -156,6 +170,7 @@ export function useDevices() {
       name: `${type}-${id}`,
       x: 80 + id * 20,
       y: 140 + id * 20,
+      mac: generateMac(id),
       // Standard-IP-Konfiguration für typische Kernkomponenten
       ...(type === 'router'
         ? {

@@ -39,6 +39,9 @@ export function Inspector({ selectedDevice, onBonPrinterModelChange, onIpConfigC
             <strong>Name:</strong> {selectedDevice.name}
           </p>
           <p>
+            <strong>MAC:</strong> {selectedDevice.mac ?? '-'}
+          </p>
+          <p>
             <strong>Position:</strong> x={Math.round(selectedDevice.x)}, y=
             {Math.round(selectedDevice.y)}
           </p>

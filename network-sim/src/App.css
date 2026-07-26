@@ -1033,3 +1033,63 @@ body {
 }
 
 /* Alte Vite-Template-Reste entfernt */
+/* ARP-Tabelle im Popup hübscher darstellen */
+.arp-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+  font-size: 0.9rem;
+}
+
+.arp-table th,
+.arp-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.4); /* graue Linie */
+  text-align: left;
+  white-space: nowrap;
+}
+
+.arp-table thead th {
+  border-bottom: 1px solid rgba(248, 250, 252, 0.8);
+  font-weight: 600;
+}
+
+.arp-table tbody tr:nth-child(even) {
+  background-color: rgba(15, 23, 42, 0.6); /* leicht dunkler für Zebra-Effekt */
+}
+/* Quiz-Buttons in der Toolbar */
+.quiz-buttons {
+  display: flex;
+  gap: 8px;
+  margin-left: 16px;
+}
+
+.quiz-btn {
+  padding: 6px 14px;
+  border-radius: 9999px;
+  border: 1px solid rgba(56, 189, 248, 0.8);
+  background: radial-gradient(circle at top left, #0f172a, #020617);
+  color: #e5f4ff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.35);
+  transition:
+    transform 0.12s ease-out,
+    box-shadow 0.12s ease-out,
+    background 0.2s ease-out;
+}
+
+.quiz-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.6);
+  background: radial-gradient(circle at top left, #172554, #020617);
+}
+
+.quiz-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 0 6px rgba(56, 189, 248, 0.4);
+}

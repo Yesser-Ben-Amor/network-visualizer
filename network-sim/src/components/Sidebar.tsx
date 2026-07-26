@@ -18,6 +18,20 @@ export function Sidebar({ onAddDevice }: SidebarProps) {
       <button onClick={() => onAddDevice('bonndrucker')}>Bondrucker hinzufügen</button>
       <button onClick={() => onAddDevice('kasse')}>Kasse hinzufügen</button>
       <button onClick={() => onAddDevice('kassenschublade')}>Kassenschublade hinzufügen</button>
+
+      <hr className="sidebar-separator" />
+      <h2>Quiz</h2>
+      <div className="quiz-sidebar">
+        <button type="button" className="quiz-btn">
+          Netzwerk-Quiz
+        </button>
+        <button type="button" className="quiz-btn">
+          Linux-Befehle Quiz
+        </button>
+        <button type="button" className="quiz-btn">
+          CMD-Befehle Quiz
+        </button>
+      </div>
     </aside>
   )
 }

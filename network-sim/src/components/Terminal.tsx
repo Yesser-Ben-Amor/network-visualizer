@@ -265,9 +265,13 @@ export function Terminal({
         }
 
         appendLine('ARP-Tabelle (simuliert):')
+        appendLine('  IP-Adresse       Typ        Name')
+        appendLine('  ---------------  ---------  ----------------')
         for (const d of sameNetDevices) {
           if (d.id === selectedDevice.id) continue
-          appendLine(`  ${d.ipAddress ?? '-'}   dynamisch   ${d.name}`)
+          const ipText = (d.ipAddress ?? '-').padEnd(15, ' ')
+          const typeText = 'dynamisch'.padEnd(9, ' ')
+          appendLine(`  ${ipText}  ${typeText}  ${d.name}`)
         }
         break
       }

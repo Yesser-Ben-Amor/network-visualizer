@@ -50,6 +50,7 @@ function App() {
   const [showSidebar, setShowSidebar] = useState(true)
   const [showScenarioPanel, setShowScenarioPanel] = useState(true)
   const [showOsiWindow, setShowOsiWindow] = useState(true)
+  const [showArpWindow, setShowArpWindow] = useState(false)
   const [activeProtocol, setActiveProtocol] = useState<'none' | 'ping' | 'dhcp'>('none')
   const [mode, setMode] = useState<'profi' | 'lern'>('profi')
   const [selectedScenarioId, setSelectedScenarioId] = useState<string>('basic-lan-dhcp')
@@ -57,7 +58,11 @@ function App() {
   const [pingPath, setPingPath] = useState<number[] | null>(null)
   const [pingProgress, setPingProgress] = useState(0)
 
-  const scenarios: LessonScenario[] = [basicLanDhcpScenario, twoNetsWithRouterScenario, internetViaDefaultRouteScenario]
+  const scenarios: LessonScenario[] = [
+    basicLanDhcpScenario,
+    twoNetsWithRouterScenario,
+    internetViaDefaultRouteScenario,
+  ]
   const activeScenario = scenarios.find((s) => s.id === selectedScenarioId) ?? null
 
   const handlePingPath = (path: number[]) => {
@@ -91,6 +96,47 @@ function App() {
     }
 
     window.requestAnimationFrame(step)
+  }
+
+  // Hilfsfunktion: Netzadresse aus IP und Maske berechnen
+  const getNetworkAddress = (ip: string | undefined, mask: string | undefined): number | null => {
+    if (!ip || !mask) return null
+    const partsIp = ip.split('.').map((p) => Number(p))
+    const partsMask = mask.split('.').map((p) => Number(p))
+    if (partsIp.length !== 4 || partsMask.length !== 4) return null
+    if (
+      partsIp.some((n) => !Number.isInteger(n) || n < 0 || n > 255) ||
+      partsMask.some((n) => !Number.isInteger(n) || n < 0 || n > 255)
+    ) {
+      return null
+    }
+    const ipInt =
+      ((partsIp[0] << 24) + (partsIp[1] << 16) + (partsIp[2] << 8) + partsIp[3]) >>> 0
+    const maskInt =
+      ((partsMask[0] << 24) + (partsMask[1] << 16) + (partsMask[2] << 8) + partsMask[3]) >>> 0
+    return (ipInt & maskInt) >>> 0
+  }
+
+  // ARP-Einträge für das aktuell ausgewählte Gerät
+  const getSelectedDeviceArpEntries = () => {
+    if (!selectedDevice || !selectedDevice.ipAddress || !selectedDevice.subnetMask) {
+      return []
+    }
+
+    const srcNet = getNetworkAddress(selectedDevice.ipAddress, selectedDevice.subnetMask)
+    if (srcNet === null) return []
+
+    return devices
+      .filter((d) => d.ipAddress && d.subnetMask)
+      .filter((d) => {
+        const net = getNetworkAddress(d.ipAddress, d.subnetMask)
+        return net !== null && net === srcNet && d.id !== selectedDevice.id
+      })
+      .map((d) => ({
+        ip: d.ipAddress ?? '-',
+        mac: d.mac ?? '-',
+        name: d.name,
+      }))
   }
 
   const handleSetActiveProtocol = (protocol: 'none' | 'ping' | 'dhcp') => {
@@ -300,7 +346,14 @@ function App() {
           <div className="toolbar-right">
             <ModeSwitcher mode={mode} onChange={setMode} />
             {mode === 'lern' && (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-end',
+                  gap: '4px',
+                }}
+              >
                 <select
                   value={selectedScenarioId}
                   onChange={(e) => setSelectedScenarioId(e.target.value)}
@@ -419,6 +472,14 @@ function App() {
               <button type="button" onClick={handlePrint}>
                 Drucken
               </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowArpWindow(true)
+                }}
+              >
+                ARP-Tabelle
+              </button>
             </div>
           </div>
         </div>
@@ -496,6 +557,50 @@ function App() {
       {showOsiWindow && (
         <CmdWindow title="OSI-Modell" onClose={() => setShowOsiWindow(false)}>
           <OsiStack activeLayers={getActiveOsiLayers()} />
+        </CmdWindow>
+      )}
+
+      {showArpWindow && (
+        <CmdWindow title="ARP-Tabelle" onClose={() => setShowArpWindow(false)}>
+          <div className="doc-window-body">
+            {!selectedDevice && <p>Kein Gerät ausgewählt. Wähle im Canvas ein Gerät aus.</p>}
+            {selectedDevice && (!selectedDevice.ipAddress || !selectedDevice.subnetMask) && (
+              <p>
+                Das ausgewählte Gerät hat keine vollständige IP-Konfiguration. ARP-Tabelle nicht
+                verfügbar.
+              </p>
+            )}
+            {selectedDevice && selectedDevice.ipAddress && selectedDevice.subnetMask && (
+              <>
+                <p>
+                  ARP-Tabelle für <strong>{selectedDevice.name}</strong> ({' '}
+                  {selectedDevice.ipAddress}/{selectedDevice.subnetMask})
+                </p>
+                {getSelectedDeviceArpEntries().length === 0 ? (
+                  <p>Keine weiteren Geräte im gleichen Netz gefunden.</p>
+                ) : (
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Gerätename</th>
+                        <th>IP-Adresse</th>
+                        <th>MAC-Adresse</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {getSelectedDeviceArpEntries().map((entry) => (
+                        <tr key={`${entry.ip}-${entry.mac}-${entry.name}`}>
+                          <td>{entry.name}</td>
+                          <td>{entry.ip}</td>
+                          <td>{entry.mac}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </>
+            )}
+          </div>
         </CmdWindow>
       )}
 

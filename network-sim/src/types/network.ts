@@ -32,6 +32,7 @@ export interface Device {
   x: number
   y: number
   model?: string
+  mac?: string
   ipAddress?: string
   subnetMask?: string
   gateway?: string
