@@ -452,7 +452,7 @@ function App() {
       <main className="canvas-wrapper">
         <div className="canvas-header">
           <div>
-            <h1>Netzwerksimulator (Basis)</h1>
+            <h1>Netzwerksimulator (Basis) v2</h1>
             <p>Füge links Geräte hinzu und ziehe sie im Canvas per Drag & Drop.</p>
           </div>
 
