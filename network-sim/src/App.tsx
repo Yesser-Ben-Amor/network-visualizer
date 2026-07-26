@@ -1,5 +1,5 @@
 import './App.css'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Sidebar } from './components/Sidebar'
 import { Inspector } from './components/Inspector'
 import { Canvas } from './components/Canvas'
@@ -13,6 +13,11 @@ import type { LessonScenario } from './types/scenario'
 import { basicLanDhcpScenario } from './scenarios/basicLanDhcp'
 import { twoNetsWithRouterScenario } from './scenarios/twoNetsWithRouter'
 import { internetViaDefaultRouteScenario } from './scenarios/internetViaDefaultRoute'
+import {
+  hardNetworkQuestions,
+  mediumNetworkQuestions,
+  spongebobNetworkQuestions,
+} from './quizzes/networkSpongebob'
 
 function App() {
   const {
@@ -58,6 +63,13 @@ function App() {
   const [pingPath, setPingPath] = useState<number[] | null>(null)
   const [pingProgress, setPingProgress] = useState(0)
   const [quizType, setQuizType] = useState<'network' | 'linux' | 'cmd' | null>(null)
+  const [quizLevel, setQuizLevel] = useState<'easy' | 'medium' | 'hard' | null>(null)
+  const [quizCurrentIndex, setQuizCurrentIndex] = useState(0)
+  const [quizCorrectCount, setQuizCorrectCount] = useState(0)
+  const [quizFinished, setQuizFinished] = useState(false)
+  const [quizShuffledOrder, setQuizShuffledOrder] = useState<number[]>([])
+  const [quizSelectedOption, setQuizSelectedOption] = useState<string | null>(null)
+  const [quizTimeLeft, setQuizTimeLeft] = useState(5)
 
   const scenarios: LessonScenario[] = [
     basicLanDhcpScenario,
@@ -65,6 +77,12 @@ function App() {
     internetViaDefaultRouteScenario,
   ]
   const activeScenario = scenarios.find((s) => s.id === selectedScenarioId) ?? null
+
+  const getCurrentNetworkQuestions = () => {
+    if (quizLevel === 'medium') return mediumNetworkQuestions
+    if (quizLevel === 'hard') return hardNetworkQuestions
+    return spongebobNetworkQuestions
+  }
 
   const handlePingPath = (path: number[]) => {
     if (path.length < 2) return
@@ -322,11 +340,97 @@ function App() {
 
   const handleOpenQuiz = (type: 'network' | 'linux' | 'cmd') => {
     setQuizType(type)
+    setQuizLevel(null)
+    setQuizFinished(false)
+    setQuizCorrectCount(0)
+    setQuizCurrentIndex(0)
+    setQuizSelectedOption(null)
+    setQuizTimeLeft(5)
+
+    if (type === 'network') {
+      // Reihenfolge wird gesetzt, sobald eine Stufe gewählt wurde
+      setQuizShuffledOrder([])
+    } else {
+      setQuizShuffledOrder([])
+    }
   }
 
   const handleCloseQuiz = () => {
     setQuizType(null)
+    setQuizLevel(null)
+    setQuizFinished(false)
+    setQuizSelectedOption(null)
   }
+
+  const handleQuizSelectOption = (optionId: string) => {
+    if (quizFinished || quizSelectedOption !== null || quizType !== 'network') return
+
+    const questions = getCurrentNetworkQuestions()
+    const order = quizShuffledOrder.length ? quizShuffledOrder : questions.map((_, idx) => idx)
+    const question = questions[order[quizCurrentIndex]]
+
+    setQuizSelectedOption(optionId)
+    if (optionId === question.correctId) {
+      setQuizCorrectCount((prev) => prev + 1)
+    }
+  }
+
+  const handleQuizNextQuestion = () => {
+    if (quizType !== 'network') return
+
+    const questions = getCurrentNetworkQuestions()
+    const total = questions.length
+    const nextIndex = quizCurrentIndex + 1
+
+    if (nextIndex >= total) {
+      setQuizFinished(true)
+      return
+    }
+
+    setQuizCurrentIndex(nextIndex)
+    setQuizSelectedOption(null)
+    setQuizTimeLeft(5)
+  }
+
+  const handleQuizRetry = () => {
+    if (quizType !== 'network') return
+
+    setQuizFinished(false)
+    setQuizCorrectCount(0)
+    setQuizCurrentIndex(0)
+    setQuizSelectedOption(null)
+    setQuizTimeLeft(5)
+
+    const questions = getCurrentNetworkQuestions()
+    const order = questions.map((_, idx) => idx)
+    for (let i = order.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[order[i], order[j]] = [order[j], order[i]]
+    }
+    setQuizShuffledOrder(order)
+  }
+
+  useEffect(() => {
+    if (quizType !== 'network' || !quizLevel || quizFinished) return
+
+    setQuizTimeLeft(5)
+    const start = Date.now()
+
+    const id = window.setInterval(() =>
+      setQuizTimeLeft(() => {
+        const elapsedSeconds = (Date.now() - start) / 1000
+        const remaining = Math.max(0, 5 - elapsedSeconds)
+        if (remaining <= 0) {
+          window.clearInterval(id)
+        }
+        return remaining
+      }),
+    100)
+
+    return () => {
+      window.clearInterval(id)
+    }
+  }, [quizType, quizLevel, quizCurrentIndex, quizFinished])
 
   return (
     <div className="app-root">
@@ -626,33 +730,128 @@ function App() {
         <CmdWindow
           title={
             quizType === 'network'
-              ? 'Netzwerk-Quiz: Schwierigkeitsgrad'
+              ? 'Netzwerk-Quiz'
               : quizType === 'linux'
-                ? 'Linux-Befehle Quiz: Schwierigkeitsgrad'
-                : 'CMD-Befehle Quiz: Schwierigkeitsgrad'
+                ? 'Linux-Befehle Quiz'
+                : 'CMD-Befehle Quiz'
           }
           onClose={handleCloseQuiz}
         >
           <div className="doc-window-body quiz-modal-body">
-            <p>Wähle deine Stufe:</p>
-            <div className="quiz-levels">
-              <button type="button" className="quiz-level">
-                <img
-                  src="https://www.tambini.de/media/image/9e/81/ba/SpongeBob-Geburtstagsspiele.jpg"
+            {quizType === 'network' && quizLevel === null && (
+              <>
+                <p>Wähle deine Stufe:</p>
+                <div className="quiz-levels">
+                  <button
+                    type="button"
+                    className="quiz-level"
+                    onClick={() => setQuizLevel('easy')}
+                  >
+                    <img
+                      src="https://www.tambini.de/media/image/9e/81/ba/SpongeBob-Geburtstagsspiele.jpg"
+                      alt="Spongebob-Stufe"
+                      className="quiz-level-image"
+                    />
+                    <span className="quiz-level-text">Spongebob-Stufe</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="quiz-level"
+                    onClick={() => setQuizLevel('medium')}
+                  >
+                    <span className="quiz-level-text">Mittelstufe (🧠)</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="quiz-level"
+                    onClick={() => setQuizLevel('hard')}
+                  >
+                    <span className="quiz-level-text">Ninja-Stufe (🥷)</span>
+                  </button>
+                </div>
+              </>
+            )}
 
-                  alt="Spongebob-Stufe"
-                  className="quiz-level-image"
-                />
-                <span className="quiz-level-text">Spongebob-Stufe</span>
-              </button>
-              <button type="button" className="quiz-level">
-                <span className="quiz-level-text">Mittelstufe (🧠)</span>
-              </button>
-              <button type="button" className="quiz-level">
-               
-                <span className="quiz-level-text">Ninja-Stufe (🥷)</span>
-              </button>
-            </div>
+            {quizType === 'network' && quizLevel !== null && (
+              <>
+                {(() => {
+                  const questions = getCurrentNetworkQuestions()
+                  const order =
+                    quizShuffledOrder.length > 0
+                      ? quizShuffledOrder
+                      : questions.map((_, idx) => idx)
+                  const question = questions[order[quizCurrentIndex]]
+
+                  return (
+                    <>
+                      <div className="quiz-timer">
+                        <div className="quiz-timer-frame">
+                          <div className="quiz-timer-track">
+                            <div
+                              className="quiz-timer-fill"
+                              style={{ width: `${(quizTimeLeft / 5) * 100}%` }}
+                            />
+                          </div>
+                          <div className="quiz-timer-center">{Math.ceil(quizTimeLeft)}s</div>
+                        </div>
+                      </div>
+                      <p>
+                        Frage {quizCurrentIndex + 1} von {order.length}
+                      </p>
+                      <h3>{question.text}</h3>
+                      <div className="quiz-options">
+                        {question.options.map((opt) => (
+                          <button
+                            key={opt.id}
+                            type="button"
+                            className={
+                              quizSelectedOption === null
+                                ? 'quiz-option-btn'
+                                : opt.id === question.correctId
+                                  ? 'quiz-option-btn quiz-option-correct'
+                                  : opt.id === quizSelectedOption
+                                    ? 'quiz-option-btn quiz-option-wrong'
+                                    : 'quiz-option-btn quiz-option-disabled'
+                            }
+                            disabled={quizSelectedOption !== null}
+                            onClick={() => handleQuizSelectOption(opt.id)}
+                          >
+                            {opt.text}
+                          </button>
+                        ))}
+                      </div>
+
+                      {quizSelectedOption !== null && !quizFinished && (
+                        <button type="button" onClick={handleQuizNextQuestion}>
+                          Nächste Frage
+                        </button>
+                      )}
+
+                      {quizFinished && (
+                        <>
+                          <p>
+                            Du hast {quizCorrectCount} von {order.length} Fragen richtig beantwortet.
+                          </p>
+                          <p>
+                            Ergebnis:{' '}
+                            {quizCorrectCount >= Math.ceil(order.length * 0.7)
+                              ? 'Bestanden 🎉'
+                              : 'Nicht bestanden – versuche es noch einmal.'}
+                          </p>
+                          <button type="button" onClick={handleQuizRetry}>
+                            Quiz wiederholen
+                          </button>
+                        </>
+                      )}
+                    </>
+                  )
+                })()}
+              </>
+            )}
+
+            {quizType !== 'network' && (
+              <p>Für dieses Quiz sind noch keine Fragen hinterlegt.</p>
+            )}
           </div>
         </CmdWindow>
       )}
