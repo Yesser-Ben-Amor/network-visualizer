@@ -2,9 +2,10 @@ import type { DeviceType } from '../types/network'
 
 interface SidebarProps {
   onAddDevice: (type: DeviceType) => void
+  onOpenQuiz: (type: 'network' | 'linux' | 'cmd') => void
 }
 
-export function Sidebar({ onAddDevice }: SidebarProps) {
+export function Sidebar({ onAddDevice, onOpenQuiz }: SidebarProps) {
   return (
     <aside className="sidebar">
       <h2>Palette</h2>
@@ -22,13 +23,25 @@ export function Sidebar({ onAddDevice }: SidebarProps) {
       <hr className="sidebar-separator" />
       <h2>Quiz</h2>
       <div className="quiz-sidebar">
-        <button type="button" className="quiz-btn">
+        <button
+          type="button"
+          className="quiz-btn"
+          onClick={() => onOpenQuiz('network')}
+        >
           Netzwerk-Quiz
         </button>
-        <button type="button" className="quiz-btn">
+        <button
+          type="button"
+          className="quiz-btn"
+          onClick={() => onOpenQuiz('linux')}
+        >
           Linux-Befehle Quiz
         </button>
-        <button type="button" className="quiz-btn">
+        <button
+          type="button"
+          className="quiz-btn"
+          onClick={() => onOpenQuiz('cmd')}
+        >
           CMD-Befehle Quiz
         </button>
       </div>

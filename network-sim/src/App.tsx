@@ -57,6 +57,7 @@ function App() {
   const [scenarioMessages, setScenarioMessages] = useState<string[]>([])
   const [pingPath, setPingPath] = useState<number[] | null>(null)
   const [pingProgress, setPingProgress] = useState(0)
+  const [quizType, setQuizType] = useState<'network' | 'linux' | 'cmd' | null>(null)
 
   const scenarios: LessonScenario[] = [
     basicLanDhcpScenario,
@@ -68,7 +69,6 @@ function App() {
   const handlePingPath = (path: number[]) => {
     if (path.length < 2) return
 
-    // Hin- und Rückweg: z.B. [A,B,C] -> [A,B,C,B,A]
     const forward = path
     const backward = path.slice(0, -1).reverse()
     const roundTrip = [...forward, ...backward]
@@ -87,7 +87,6 @@ function App() {
       if (t < 1) {
         window.requestAnimationFrame(step)
       } else {
-        // Animation abgeschlossen
         setTimeout(() => {
           setPingPath(null)
           setPingProgress(0)
@@ -98,7 +97,6 @@ function App() {
     window.requestAnimationFrame(step)
   }
 
-  // Hilfsfunktion: Netzadresse aus IP und Maske berechnen
   const getNetworkAddress = (ip: string | undefined, mask: string | undefined): number | null => {
     if (!ip || !mask) return null
     const partsIp = ip.split('.').map((p) => Number(p))
@@ -117,7 +115,6 @@ function App() {
     return (ipInt & maskInt) >>> 0
   }
 
-  // ARP-Einträge für das aktuell ausgewählte Gerät
   const getSelectedDeviceArpEntries = () => {
     if (!selectedDevice || !selectedDevice.ipAddress || !selectedDevice.subnetMask) {
       return []
@@ -143,18 +140,15 @@ function App() {
     setActiveProtocol(protocol)
 
     if (protocol !== 'none') {
-      // Protokoll für kurze Zeit hervorheben, dann automatisch zurücksetzen
       window.setTimeout(() => {
         setActiveProtocol('none')
       }, 3000)
     }
   }
 
-  // OSI-Visualisierung: aktuelle aktive Schichten aus Kabeltyp + Protokoll ableiten
   const getActiveOsiLayers = (): number[] => {
     const layers: number[] = []
 
-    // Verkabelung aktiv → Schicht 1+2
     switch (currentCableType) {
       case 'ethernet':
       case 'fiber':
@@ -166,16 +160,12 @@ function App() {
         break
     }
 
-    // Protokollabhängige Schichten
     if (activeProtocol === 'ping') {
-      // Ping: Netzwerk + Transport
       layers.push(3, 4)
     } else if (activeProtocol === 'dhcp') {
-      // DHCP: Netzwerk, Transport, Anwendung
       layers.push(3, 4, 7)
     }
 
-    // Duplikate entfernen
     return Array.from(new Set(layers)).sort((a, b) => a - b)
   }
 
@@ -236,7 +226,6 @@ function App() {
       )
     }
 
-    // Verbindungsübersicht mit Kabeltyp und IPs der Endpunkte
     connections.forEach((conn, index) => {
       const from = devices.find((d) => d.id === conn.fromId)
       const to = devices.find((d) => d.id === conn.toId)
@@ -331,10 +320,18 @@ function App() {
     setScenarioMessages(messages)
   }
 
+  const handleOpenQuiz = (type: 'network' | 'linux' | 'cmd') => {
+    setQuizType(type)
+  }
+
+  const handleCloseQuiz = () => {
+    setQuizType(null)
+  }
+
   return (
     <div className="app-root">
       <MatrixBackground />
-      {showSidebar && <Sidebar onAddDevice={addDevice} />}
+      {showSidebar && <Sidebar onAddDevice={addDevice} onOpenQuiz={handleOpenQuiz} />}
 
       <main className="canvas-wrapper">
         <div className="canvas-header">
@@ -621,6 +618,41 @@ function App() {
         <CmdWindow title="Netzwerkdokumentation" onClose={() => setShowDocumentationWindow(false)}>
           <div className="doc-window-body">
             <pre>{documentation}</pre>
+          </div>
+        </CmdWindow>
+      )}
+
+      {quizType && (
+        <CmdWindow
+          title={
+            quizType === 'network'
+              ? 'Netzwerk-Quiz: Schwierigkeitsgrad'
+              : quizType === 'linux'
+                ? 'Linux-Befehle Quiz: Schwierigkeitsgrad'
+                : 'CMD-Befehle Quiz: Schwierigkeitsgrad'
+          }
+          onClose={handleCloseQuiz}
+        >
+          <div className="doc-window-body quiz-modal-body">
+            <p>Wähle deine Stufe:</p>
+            <div className="quiz-levels">
+              <button type="button" className="quiz-level">
+                <img
+                  src="https://www.tambini.de/media/image/9e/81/ba/SpongeBob-Geburtstagsspiele.jpg"
+
+                  alt="Spongebob-Stufe"
+                  className="quiz-level-image"
+                />
+                <span className="quiz-level-text">Spongebob-Stufe</span>
+              </button>
+              <button type="button" className="quiz-level">
+                <span className="quiz-level-text">Mittelstufe (🧠)</span>
+              </button>
+              <button type="button" className="quiz-level">
+               
+                <span className="quiz-level-text">Ninja-Stufe (🥷)</span>
+              </button>
+            </div>
           </div>
         </CmdWindow>
       )}
